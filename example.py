@@ -1,40 +1,6 @@
 import asyncio
-import base64
-import os
-from datetime import datetime
-from pathlib import Path
 
 from sdxl import SDXLClient, SDXLConfig, SDXLException, SDXLStyle
-
-
-async def save_images(images: list[str]) -> list[Path]:
-    """
-    Save base64 encoded images to local files
-
-    Args:
-        images: List of base64 encoded images
-
-    Returns:
-        List of paths to saved files
-    """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    for idx, img_data in enumerate(images):
-        try:
-            base64_data = img_data.split(",")[1]
-            image_bytes = base64.b64decode(base64_data)
-
-            folder_path = "results"
-            os.makedirs(folder_path, exist_ok=True)
-
-            filename = Path(f"{folder_path}/generated_image_{timestamp}_{idx+1}.jpg")
-
-            with open(filename, "wb") as f:
-                f.write(image_bytes)
-
-        except Exception as e:
-            print(f"Error saving image {idx+1}: {e}")
-            continue
 
 
 async def main():
@@ -49,7 +15,8 @@ async def main():
             style=SDXLStyle.CINEMATIC,
         )
 
-        await save_images(images)
+        for image_base64 in images:
+            print(image_base64[:70])
 
     except SDXLException as e:
         print(f"Error generating images: {e}")
