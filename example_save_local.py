@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from sdxl import SDXLClient, SDXLConfig, SDXLException, SDXLStyle
+from freesdxl import SDXLClient, SDXLConfig, SDXLException, SDXLStyle
 
 
 async def save_images(images: list[str]) -> list[Path]:

@@ -1,6 +1,6 @@
 import asyncio
 
-from sdxl import SDXLClient, SDXLConfig, SDXLException, SDXLStyle
+from freesdxl import SDXLClient, SDXLConfig, SDXLException, SDXLStyle
 
 
 async def main():
