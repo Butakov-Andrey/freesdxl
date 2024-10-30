@@ -8,6 +8,7 @@ from typing import List, Optional
 from urllib.parse import urlparse
 
 import websockets
+from deep_translator import GoogleTranslator
 
 
 class SDXLStyle(Enum):
@@ -48,6 +49,12 @@ class ResponseError(SDXLException):
     pass
 
 
+class TranslationError(SDXLException):
+    """Raised when translation fails"""
+
+    pass
+
+
 @dataclass
 class SDXLConfig:
     """
@@ -59,6 +66,9 @@ class SDXLConfig:
         max_size: Maximum size of SDXL payload
         max_queue: Maximum size of SDXL queue
         fn_index: Index of function in SDXL payload
+        translate_from: Translate from language
+        translate_to: Transalate to language
+        auto_translate: Enable or disable translation
     """
 
     ws_url: str = "wss://google-sdxl.hf.space/queue/join"
@@ -66,6 +76,9 @@ class SDXLConfig:
     max_size: int = 10 * 1024 * 1024  # 10MB
     max_queue: int = 2048
     fn_index: int = 2
+    translate_from: str = "ru"
+    translate_to: str = "en"
+    auto_translate: bool = True
 
     def __post_init__(self):
         """Validate configuration"""
@@ -84,11 +97,39 @@ class SDXLClient:
         """Initialize SDXL client with configuration"""
         self.config = config
         self._session_hash: Optional[str] = None
+        self._translator = None
+        if self.config.auto_translate:
+            self._translator = GoogleTranslator(
+                source=self.config.translate_from, target=self.config.translate_to
+            )
 
     @staticmethod
     def _generate_session_hash(length: int = 10) -> str:
         """Generate random session hash"""
         return "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=length))
+
+    async def _translate_text(self, text: str) -> str:
+        """
+        Translate text if translation is enabled
+
+        Args:
+            text: Text to translate
+
+        Returns:
+            Translated text or original text if translation is disabled
+
+        Additional info:
+            Check available languages:
+                langs_dict = GoogleTranslator().get_supported_languages(as_dict=True)
+        """
+        if not text or not self.config.auto_translate:
+            return text
+
+        try:
+            translated = self._translator.translate(text)
+            return translated
+        except Exception as e:
+            raise TranslationError(f"Translation failed: {e}")
 
     async def _validate_base64_image(self, image_data: str) -> bool:
         """Validate base64 image data"""
@@ -124,6 +165,10 @@ class SDXLClient:
             SDXLException: If any error occurs during generation
         """
         try:
+            # Translate prompts
+            translated_prompt = await self._translate_text(prompt)
+            translated_negative = await self._translate_text(negative_prompt)
+
             async with websockets.connect(
                 self.config.ws_url,
                 max_size=self.config.max_size,
@@ -162,7 +207,12 @@ class SDXLClient:
                 await websocket.send(
                     json.dumps(
                         {
-                            "data": [prompt, negative_prompt, cfg_scale, style.value],
+                            "data": [
+                                translated_prompt,
+                                translated_negative,
+                                cfg_scale,
+                                style.value,
+                            ],
                             "event_data": None,
                             "fn_index": self.config.fn_index,
                             "session_hash": self._session_hash,

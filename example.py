@@ -38,15 +38,15 @@ async def save_images(images: list[str]) -> list[Path]:
 
 
 async def main():
-    config = SDXLConfig()
+    config = SDXLConfig(auto_translate=True)
     client = SDXLClient(config)
 
     try:
         images = await client.generate(
-            prompt="A beautiful sunset over wood",
-            negative_prompt="blur, light",
-            cfg_scale=7.5,
-            style=SDXLStyle.THREE_D_MODEL,
+            prompt="Розовая белка играет на барабанах",
+            negative_prompt="блюр",
+            cfg_scale=10,
+            style=SDXLStyle.CINEMATIC,
         )
 
         await save_images(images)
